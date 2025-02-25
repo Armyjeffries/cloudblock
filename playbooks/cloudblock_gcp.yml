@@ -478,6 +478,18 @@
         - "        headers: "
         - "          Authorization: Bearer {{ '{{' }} gcs_token_response.json.access_token {{ '}}' }}"
         - "          Content-Type: application/gzip"
+        - "    -  name: Delete old backups (keep last 30 days)"  # ADDED RETENTION TASK
+        - "       ansible.builtin.shell: |"  # Use ansible.builtin.shell
+        - "        gsutil ls -t gs://{{ gcp_project_prefix }}-bucket-{{ gcp_project_suffix }}/pihole/pihole_backup.tar.gz |"
+        - "        awk '{ print $2, $1 }' |"
+        - "        sort -rn |"
+        - "        tail -n +31 |"
+        - "        while read timestamp file; do"
+        - "          gsutil rm \"$file\""
+        - "        done"
+        - "      args:"
+        - "        executable: /bin/bash" # Specify bash
+
 
     - name: Pihole to backup timer
       ansible.builtin.blockinfile:
@@ -491,7 +503,7 @@
           Description=Archives and copies pihole to cloud storage
 
           [Timer]
-          OnUnitActiveSec=12h
+          OnUnitActiveSec=48h #Changed from 12h
           Unit=pihole-to-backup.service
 
           [Install]
